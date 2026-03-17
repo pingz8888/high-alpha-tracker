@@ -24,5 +24,4 @@ const handler = async function(event, context) {
         return { statusCode: 200, body: "Email sent." };
     } catch (error) { return { statusCode: 500, body: "Cron failed." }; }
 };
-// Runs at 00:00 UTC (8:00 AM Singapore Time)
 exports.handler = schedule("0 0 * * *", handler);
