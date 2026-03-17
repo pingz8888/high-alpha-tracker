@@ -1,6 +1,5 @@
-const yahooFinance = require('yahoo-finance2').default;
-
 exports.handler = async function(event, context) {
+    // 1. Security Bouncer
     const APP_PASSWORD = process.env.APP_PASSWORD;
     if (!event.headers['x-app-password'] || event.headers['x-app-password'] !== APP_PASSWORD) {
         return { statusCode: 401, body: JSON.stringify({ error: "Unauthorized" }) };
@@ -13,32 +12,41 @@ exports.handler = async function(event, context) {
     const livePrices = {};
 
     try {
-        // Fetch each stock individually so one bad ticker doesn't crash the whole batch
-        const quotes = await Promise.all(symbols.map(async (symbol) => {
+        // 2. Native Fetch directly to Yahoo's public v8 API (No libraries needed)
+        await Promise.all(symbols.map(async (symbol) => {
             try {
-                return await yahooFinance.quote(symbol);
+                // Yahoo's raw charting endpoint
+                const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1d`;
+                const response = await fetch(url, {
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                    }
+                });
+                
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                
+                const data = await response.json();
+                
+                // Navigate Yahoo's JSON structure to find the current market price
+                const price = data.chart?.result?.[0]?.meta?.regularMarketPrice;
+                
+                if (price) {
+                    livePrices[symbol] = price.toFixed(2);
+                }
             } catch (err) {
-                console.error(`❌ Error fetching ${symbol}:`, err.message);
-                return null; 
+                console.error(`❌ Failed to fetch ${symbol}:`, err.message);
+                // We don't throw here so that one bad ticker doesn't break the rest
             }
         }));
 
-        quotes.forEach((quote, index) => {
-            if (quote && quote.regularMarketPrice) {
-                livePrices[symbols[index]] = quote.regularMarketPrice.toFixed(2);
-            }
-        });
-
-        // If the object is entirely empty, Yahoo blocked the Netlify server
         if (Object.keys(livePrices).length === 0) {
-            console.error("❌ All tickers failed. Yahoo Finance may be rate-limiting this IP.");
-            return { statusCode: 500, body: JSON.stringify({ error: "All data requests blocked." }) };
+            return { statusCode: 500, body: JSON.stringify({ error: "Yahoo Finance blocked the data request." }) };
         }
 
         return { statusCode: 200, body: JSON.stringify(livePrices) };
         
     } catch (error) { 
-        console.error("❌ Fatal Server Error in getStocks:", error.message);
+        console.error("❌ Fatal Server Error:", error.message);
         return { statusCode: 500, body: JSON.stringify({ error: `Data fetch failed: ${error.message}` }) }; 
     }
 };
