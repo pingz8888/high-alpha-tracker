@@ -14,22 +14,19 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { 
-            background-color: #000000; 
-            color: #f8fafc; 
+            background-color: #000000; color: #f8fafc; 
             -webkit-tap-highlight-color: transparent; 
-            padding-top: env(safe-area-inset-top);
-            padding-bottom: env(safe-area-inset-bottom);
+            padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom);
         }
         .ios-glass { 
-            background: rgba(30, 41, 59, 0.6); 
-            backdrop-filter: blur(20px); 
-            -webkit-backdrop-filter: blur(20px); 
+            background: rgba(30, 41, 59, 0.6); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); 
             border: 1px solid rgba(255, 255, 255, 0.1); 
         }
         .loader { border-top-color: #3b82f6; -webkit-animation: spinner 1.5s linear infinite; animation: spinner 1.5s linear infinite; }
         @keyframes spinner { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         ::-webkit-scrollbar { display: none; }
 
+        /* Splash Screen */
         #splash-screen {
             position: fixed; inset: 0; background-color: #000000; z-index: 50;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -46,9 +43,24 @@
             70% { transform: scale(1); box-shadow: 0 0 0 20px rgba(59, 130, 246, 0); }
             100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
         }
+
+        /* Security Lock Screen */
+        #auth-screen {
+            position: fixed; inset: 0; background-color: rgba(0, 0, 0, 0.85); 
+            backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+            z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px;
+        }
     </style>
 </head>
 <body class="font-sans antialiased min-h-screen flex flex-col pb-6 px-4 pt-6">
+
+    <div id="auth-screen">
+        <svg class="w-12 h-12 text-blue-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+        <h2 class="text-2xl font-bold text-white mb-2 tracking-wide">Encrypted Access</h2>
+        <p class="text-slate-400 text-sm mb-6 text-center">Please enter your Master Key.</p>
+        <input type="password" id="masterKeyInput" placeholder="Enter PIN" class="w-full max-w-xs bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-3 text-center text-lg text-white focus:outline-none focus:border-blue-500 transition-colors mb-4">
+        <button onclick="unlockApp()" class="w-full max-w-xs bg-blue-600 active:bg-blue-700 active:scale-95 text-white px-5 py-3 rounded-xl font-semibold transition-all">Unlock</button>
+    </div>
 
     <div id="splash-screen">
         <div class="splash-logo mb-6"></div>
@@ -84,9 +96,40 @@
 
     <script>
         let watchlist = JSON.parse(localStorage.getItem('alphaWatchlist')) || ['SE', '5E2.SI', '558.SI', 'F03.SI'];
+        let savedKey = localStorage.getItem('appMasterKey');
 
         function saveWatchlist() { localStorage.setItem('alphaWatchlist', JSON.stringify(watchlist)); }
 
+        // Security & Initialization
+        document.addEventListener('DOMContentLoaded', () => {
+            renderUI();
+            if (savedKey) {
+                document.getElementById('auth-screen').style.display = 'none';
+                fetchPrices();
+            } else {
+                document.getElementById('splash-screen').style.display = 'none';
+            }
+        });
+
+        function unlockApp() {
+            const inputKey = document.getElementById('masterKeyInput').value;
+            if (inputKey) {
+                savedKey = inputKey;
+                localStorage.setItem('appMasterKey', savedKey);
+                document.getElementById('auth-screen').style.display = 'none';
+                
+                const splash = document.getElementById('splash-screen');
+                splash.style.display = 'flex'; splash.style.opacity = '1';
+                fetchPrices();
+            }
+        }
+
+        function handleAuthFailure() {
+            localStorage.removeItem('appMasterKey');
+            location.reload();
+        }
+
+        // Core App Logic
         function addStock() {
             const input = document.getElementById('newTicker');
             const ticker = input.value.trim().toUpperCase();
@@ -122,10 +165,20 @@
             `).join('');
         }
 
+        function removeSplashScreen() {
+            const splash = document.getElementById('splash-screen');
+            if (splash) setTimeout(() => { splash.style.opacity = '0'; setTimeout(() => { splash.style.display = 'none'; }, 500); }, 500);
+        }
+
+        // Secure API Calls
         async function fetchPrices() {
             if (watchlist.length === 0) return removeSplashScreen();
             try {
-                const response = await fetch(`/.netlify/functions/getStocks?symbols=${watchlist.join(',')}`);
+                const response = await fetch(`/.netlify/functions/getStocks?symbols=${watchlist.join(',')}`, {
+                    headers: { 'x-app-password': savedKey }
+                });
+                if (response.status === 401) return handleAuthFailure();
+                
                 const data = await response.json();
                 watchlist.forEach(ticker => {
                     const el = document.getElementById(`price-${ticker}`);
@@ -135,18 +188,21 @@
             finally { removeSplashScreen(); }
         }
 
-        function removeSplashScreen() {
-            const splash = document.getElementById('splash-screen');
-            if (splash) setTimeout(() => { splash.style.opacity = '0'; setTimeout(() => { splash.style.display = 'none'; }, 500); }, 500);
-        }
-
         async function fetchWatchlistInsights() {
             const box = document.getElementById('watchlist-insights');
             box.classList.remove('hidden'); document.getElementById('ai-recommendations').classList.add('hidden');
             box.innerHTML = '<div class="flex items-center justify-center gap-2 py-4"><div class="loader ease-linear rounded-full border-2 border-t-2 border-slate-200 h-5 w-5"></div><span>Analyzing...</span></div>';
+            
             try {
-                const response = await fetch('/.netlify/functions/getInsights', { method: 'POST', body: JSON.stringify({ tickers: watchlist }) });
-                const data = await response.json(); box.innerHTML = data.insight.replace(/\n/g, '<br><br>');
+                const response = await fetch('/.netlify/functions/getInsights', { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json', 'x-app-password': savedKey },
+                    body: JSON.stringify({ tickers: watchlist }) 
+                });
+                if (response.status === 401) return handleAuthFailure();
+                
+                const data = await response.json(); 
+                box.innerHTML = data.insight.replace(/\n/g, '<br><br>');
             } catch (error) { box.innerHTML = `<span class='text-rose-400'>Error: ${error.message}</span>`; }
         }
 
@@ -154,13 +210,17 @@
             const box = document.getElementById('ai-recommendations');
             box.classList.remove('hidden'); document.getElementById('watchlist-insights').classList.add('hidden');
             box.innerHTML = '<div class="flex items-center justify-center gap-2 py-4"><div class="loader ease-linear rounded-full border-2 border-t-2 border-slate-200 h-5 w-5"></div><span>Hunting Alpha...</span></div>';
+            
             try {
-                const response = await fetch('/.netlify/functions/getRecommendations');
-                const data = await response.json(); box.innerHTML = data.recommendations.replace(/\n/g, '<br><br>');
+                const response = await fetch('/.netlify/functions/getRecommendations', {
+                    headers: { 'x-app-password': savedKey }
+                });
+                if (response.status === 401) return handleAuthFailure();
+                
+                const data = await response.json(); 
+                box.innerHTML = data.recommendations.replace(/\n/g, '<br><br>');
             } catch (error) { box.innerHTML = `<span class='text-rose-400'>Error: ${error.message}</span>`; }
         }
-
-        document.addEventListener('DOMContentLoaded', () => { renderUI(); fetchPrices(); });
     </script>
 </body>
 </html>
