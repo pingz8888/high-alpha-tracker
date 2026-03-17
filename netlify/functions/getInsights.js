@@ -23,7 +23,8 @@ exports.handler = async function(event, context) {
     const prompt = `Act as a veteran Singaporean institutional investor. Analyze this watchlist for a 6-month, 20% gain objective: ${tickers.join(', ')}. For EACH stock provide: 1. A 1-sentence technical trend. 2. A bolded [KEEP] or [SELL] recommendation.`;
 
     try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+        // Updated to the current, supported model: gemini-2.5-flash
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
         });
