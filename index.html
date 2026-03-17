@@ -2,109 +2,165 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>High-Alpha Portfolio Tracker</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#000000">
+    <title>Alpha Tracker</title>
+    
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=192&h=192&fit=crop">
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { background-color: #0f172a; color: #f8fafc; }
-        .glass-panel { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid #334155; }
+        body { 
+            background-color: #000000; 
+            color: #f8fafc; 
+            -webkit-tap-highlight-color: transparent; 
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+        .ios-glass { 
+            background: rgba(30, 41, 59, 0.6); 
+            backdrop-filter: blur(20px); 
+            -webkit-backdrop-filter: blur(20px); 
+            border: 1px solid rgba(255, 255, 255, 0.1); 
+        }
         .loader { border-top-color: #3b82f6; -webkit-animation: spinner 1.5s linear infinite; animation: spinner 1.5s linear infinite; }
         @keyframes spinner { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        ::-webkit-scrollbar { display: none; }
+
+        #splash-screen {
+            position: fixed; inset: 0; background-color: #000000; z-index: 50;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            transition: opacity 0.5s ease;
+        }
+        .splash-logo {
+            width: 90px; height: 90px; border-radius: 22px;
+            background: url('https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=192&h=192&fit=crop') center/cover;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            animation: pulse-ring 1.5s infinite cubic-bezier(0.215, 0.61, 0.355, 1);
+        }
+        @keyframes pulse-ring {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.5); }
+            70% { transform: scale(1); box-shadow: 0 0 0 20px rgba(59, 130, 246, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+        }
     </style>
 </head>
-<body class="p-6 font-sans antialiased">
+<body class="font-sans antialiased min-h-screen flex flex-col pb-6 px-4 pt-6">
 
-    <div class="max-w-6xl mx-auto space-y-6">
-        <header class="pb-4 border-b border-slate-700">
-            <h1 class="text-3xl font-bold text-blue-400">High-Alpha Portfolio</h1>
-            <p class="text-sm text-slate-400">Secure Serverless Tracking & Gemini AI Insights</p>
-        </header>
+    <div id="splash-screen">
+        <div class="splash-logo mb-6"></div>
+        <div class="text-blue-500 text-sm font-semibold tracking-widest uppercase">Syncing Markets...</div>
+    </div>
 
-        <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" id="stock-grid">
-            </section>
+    <header class="mb-6">
+        <h1 class="text-3xl font-bold tracking-tight text-white mb-1">Portfolio</h1>
+        <p class="text-sm text-slate-400 mb-4">AI Alpha Tracking</p>
+        <div class="flex gap-2">
+            <input type="text" id="newTicker" placeholder="Add Ticker (e.g. AAPL)" class="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-3 text-base text-white focus:outline-none focus:border-blue-500 uppercase transition-colors">
+            <button onclick="addStock()" class="bg-blue-600 active:bg-blue-700 active:scale-95 text-white px-5 py-3 rounded-xl font-semibold transition-all">Add</button>
+        </div>
+    </header>
 
-        <section class="glass-panel p-6 rounded-xl shadow-lg mt-8">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-xl font-semibold text-emerald-400 flex items-center gap-2">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                    Gemini Technical Insights
-                </h2>
-                <button onclick="fetchInsights()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-                    Refresh Insights
-                </button>
-            </div>
-            <div id="insight-content" class="text-slate-300 text-sm leading-relaxed min-h-[100px]">
-                Click 'Refresh Insights' to ping the secure Netlify backend for current market analysis.
-            </div>
-        </section>
+    <section class="flex-1 overflow-y-auto space-y-3 pb-4" id="stock-grid"></section>
+
+    <div class="space-y-4 mt-4">
+        <div id="watchlist-insights" class="ios-glass p-4 rounded-2xl text-slate-300 text-sm leading-relaxed hidden"></div>
+        <div id="ai-recommendations" class="ios-glass p-4 rounded-2xl text-slate-300 text-sm leading-relaxed hidden"></div>
+
+        <div class="grid grid-cols-2 gap-3">
+            <button onclick="fetchWatchlistInsights()" class="ios-glass active:bg-slate-800 active:scale-95 py-4 rounded-xl flex flex-col items-center justify-center gap-1 transition-all">
+                <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                <span class="text-xs font-medium text-white">Keep / Sell</span>
+            </button>
+            <button onclick="fetchRecommendations()" class="ios-glass border-emerald-900/50 active:bg-slate-800 active:scale-95 py-4 rounded-xl flex flex-col items-center justify-center gap-1 transition-all">
+                <svg class="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                <span class="text-xs font-medium text-white">Find Alpha</span>
+            </button>
+        </div>
     </div>
 
     <script>
-        const portfolio = [
-            { ticker: 'SE', name: 'Sea Limited', target: '+20%', stop: '-12%' },
-            { ticker: '5E2.SI', name: 'Seatrium', target: '$2.83', stop: '$2.08' },
-            { ticker: '558.SI', name: 'UMS Holdings', target: '$2.46', stop: '$1.80' },
-            { ticker: 'F03.SI', name: 'Food Empire', target: '+20%', stop: '-10%' }
-        ];
+        let watchlist = JSON.parse(localStorage.getItem('alphaWatchlist')) || ['SE', '5E2.SI', '558.SI', 'F03.SI'];
+
+        function saveWatchlist() { localStorage.setItem('alphaWatchlist', JSON.stringify(watchlist)); }
+
+        function addStock() {
+            const input = document.getElementById('newTicker');
+            const ticker = input.value.trim().toUpperCase();
+            if (ticker && !watchlist.includes(ticker)) {
+                watchlist.push(ticker);
+                saveWatchlist();
+                input.value = '';
+                renderUI();
+                const splash = document.getElementById('splash-screen');
+                splash.style.display = 'flex'; splash.style.opacity = '1';
+                fetchPrices();
+            }
+        }
+
+        function removeStock(ticker) {
+            watchlist = watchlist.filter(t => t !== ticker);
+            saveWatchlist();
+            renderUI();
+        }
 
         function renderUI() {
             const grid = document.getElementById('stock-grid');
-            grid.innerHTML = portfolio.map(stock => `
-                <div class="glass-panel p-5 rounded-xl shadow-lg">
-                    <div class="flex justify-between items-start mb-2">
-                        <div>
-                            <h3 class="text-lg font-bold">${stock.ticker}</h3>
-                            <p class="text-xs text-slate-400">${stock.name}</p>
-                        </div>
-                        <span class="px-2 py-1 bg-slate-800 rounded text-xs font-mono text-blue-300" id="price-${stock.ticker}">Loading...</span>
-                    </div>
-                    <div class="mt-4 flex justify-between text-xs border-t border-slate-700 pt-3">
-                        <span class="text-emerald-400">Target: ${stock.target}</span>
-                        <span class="text-rose-400">Stop: ${stock.stop}</span>
+            grid.innerHTML = watchlist.map(ticker => `
+                <div class="ios-glass p-4 rounded-2xl relative flex justify-between items-center group">
+                    <h3 class="text-xl font-bold text-white tracking-wide">${ticker}</h3>
+                    <div class="flex items-center gap-4">
+                        <span class="text-lg font-semibold text-white" id="price-${ticker}">--</span>
+                        <button onclick="removeStock('${ticker}')" class="text-slate-500 active:text-rose-400 p-2 rounded-full bg-slate-800/50 transition-colors">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
                     </div>
                 </div>
             `).join('');
         }
 
         async function fetchPrices() {
+            if (watchlist.length === 0) return removeSplashScreen();
             try {
-                // Calling our secure Netlify function instead of an external API directly
-                const response = await fetch('/.netlify/functions/getStocks');
+                const response = await fetch(`/.netlify/functions/getStocks?symbols=${watchlist.join(',')}`);
                 const data = await response.json();
-                
-                portfolio.forEach(stock => {
-                    const priceElement = document.getElementById(`price-${stock.ticker}`);
-                    if (data[stock.ticker]) {
-                        priceElement.innerText = `$${data[stock.ticker]}`;
-                    } else {
-                        priceElement.innerText = 'N/A';
-                    }
+                watchlist.forEach(ticker => {
+                    const el = document.getElementById(`price-${ticker}`);
+                    if (el) el.innerText = data[ticker] ? `$${data[ticker]}` : 'N/A';
                 });
-            } catch (error) {
-                console.error("Failed to fetch prices", error);
-            }
+            } catch (error) { console.error("Fetch failed", error); } 
+            finally { removeSplashScreen(); }
         }
 
-        async function fetchInsights() {
-            const outputBox = document.getElementById('insight-content');
-            outputBox.innerHTML = '<div class="loader ease-linear rounded-full border-2 border-t-2 border-slate-200 h-6 w-6 inline-block align-middle"></div> <span class="ml-3 align-middle">Analyzing market data securely...</span>';
+        function removeSplashScreen() {
+            const splash = document.getElementById('splash-screen');
+            if (splash) setTimeout(() => { splash.style.opacity = '0'; setTimeout(() => { splash.style.display = 'none'; }, 500); }, 500);
+        }
 
+        async function fetchWatchlistInsights() {
+            const box = document.getElementById('watchlist-insights');
+            box.classList.remove('hidden'); document.getElementById('ai-recommendations').classList.add('hidden');
+            box.innerHTML = '<div class="flex items-center justify-center gap-2 py-4"><div class="loader ease-linear rounded-full border-2 border-t-2 border-slate-200 h-5 w-5"></div><span>Analyzing...</span></div>';
             try {
-                // Calling our secure Netlify function
-                const response = await fetch('/.netlify/functions/getInsights');
-                const data = await response.json();
-                
-                if (data.error) throw new Error(data.error);
-                outputBox.innerHTML = data.insight.replace(/\n/g, '<br>');
-            } catch (error) {
-                outputBox.innerHTML = `<span class='text-rose-400'>Error: ${error.message}</span>`;
-            }
+                const response = await fetch('/.netlify/functions/getInsights', { method: 'POST', body: JSON.stringify({ tickers: watchlist }) });
+                const data = await response.json(); box.innerHTML = data.insight.replace(/\n/g, '<br><br>');
+            } catch (error) { box.innerHTML = `<span class='text-rose-400'>Error: ${error.message}</span>`; }
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            renderUI();
-            fetchPrices(); 
-        });
+        async function fetchRecommendations() {
+            const box = document.getElementById('ai-recommendations');
+            box.classList.remove('hidden'); document.getElementById('watchlist-insights').classList.add('hidden');
+            box.innerHTML = '<div class="flex items-center justify-center gap-2 py-4"><div class="loader ease-linear rounded-full border-2 border-t-2 border-slate-200 h-5 w-5"></div><span>Hunting Alpha...</span></div>';
+            try {
+                const response = await fetch('/.netlify/functions/getRecommendations');
+                const data = await response.json(); box.innerHTML = data.recommendations.replace(/\n/g, '<br><br>');
+            } catch (error) { box.innerHTML = `<span class='text-rose-400'>Error: ${error.message}</span>`; }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => { renderUI(); fetchPrices(); });
     </script>
 </body>
 </html>
