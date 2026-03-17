@@ -1,3 +1,4 @@
+
 exports.handler = async function(event, context) {
     const APP_PASSWORD = process.env.APP_PASSWORD;
     if (event.headers['x-app-password'] !== APP_PASSWORD) {
@@ -5,7 +6,7 @@ exports.handler = async function(event, context) {
     }
 
     const symbols = (event.queryStringParameters.symbols || "").split(',');
-    const livePrices = {};
+    const results = {};
 
     try {
         await Promise.all(symbols.map(async (symbol) => {
@@ -15,10 +16,16 @@ exports.handler = async function(event, context) {
                     headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36' }
                 });
                 const data = await response.json();
-                const price = data.spark?.result?.[0]?.response?.[0]?.meta?.regularMarketPrice;
-                if (price) livePrices[symbol] = price.toFixed(2);
+                const meta = data.spark?.result?.[0]?.response?.[0]?.meta;
+                
+                if (meta?.regularMarketPrice) {
+                    results[symbol] = {
+                        price: meta.regularMarketPrice.toFixed(2),
+                        name: meta.longName || symbol
+                    };
+                }
             } catch (err) { console.error(`Failed ${symbol}:`, err.message); }
         }));
-        return { statusCode: 200, body: JSON.stringify(livePrices) };
+        return { statusCode: 200, body: JSON.stringify(results) };
     } catch (error) { return { statusCode: 500, body: JSON.stringify({ error: error.message }) }; }
 };
