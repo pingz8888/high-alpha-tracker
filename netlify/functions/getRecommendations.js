@@ -1,4 +1,9 @@
 exports.handler = async function(event, context) {
+    const APP_PASSWORD = process.env.APP_PASSWORD;
+    if (!event.headers['x-app-password'] || event.headers['x-app-password'] !== APP_PASSWORD) {
+        return { statusCode: 401, body: JSON.stringify({ error: "Unauthorized" }) };
+    }
+
     const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
     const prompt = `Act as a veteran Singaporean hedge fund manager. Mandate: 6-month swing trades, 20% capital appreciation. Recommend TWO new stocks (US or SGX listed) showing high-probability technical setups. Format: Ticker, Catalyst, Entry Strategy, Stop-Loss.`;
 
