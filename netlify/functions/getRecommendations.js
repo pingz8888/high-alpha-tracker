@@ -5,6 +5,10 @@ exports.handler = async function(event, context) {
     }
 
     const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+    if (!GEMINI_API_KEY) {
+        return { statusCode: 500, body: JSON.stringify({ error: "GEMINI_API_KEY is missing in Netlify Environment Variables." }) };
+    }
+
     const prompt = `Act as a veteran Singaporean hedge fund manager. Mandate: 6-month swing trades, 20% capital appreciation. Recommend TWO new stocks (US or SGX listed) showing high-probability technical setups. Format: Ticker, Catalyst, Entry Strategy, Stop-Loss.`;
 
     try {
@@ -12,7 +16,24 @@ exports.handler = async function(event, context) {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
         });
+        
         const data = await response.json();
+        
+        // Check if Google sent back an error object
+        if (!response.ok) {
+            console.error("Google API Error:", data);
+            return { statusCode: 500, body: JSON.stringify({ error: `Google API Error: ${data.error?.message || response.statusText}` }) };
+        }
+
+        // Check if Gemini blocked the prompt due to safety filters
+        if (!data.candidates || data.candidates.length === 0) {
+            console.error("Gemini blocked response:", data);
+            return { statusCode: 500, body: JSON.stringify({ error: "Gemini returned an empty response. It may have triggered a safety filter." }) };
+        }
+
         return { statusCode: 200, body: JSON.stringify({ recommendations: data.candidates[0].content.parts[0].text }) };
-    } catch (error) { return { statusCode: 500, body: JSON.stringify({ error: "Engine failed." }) }; }
+    } catch (error) { 
+        console.error("Server Crash:", error);
+        return { statusCode: 500, body: JSON.stringify({ error: `Server Code Crash: ${error.message}` }) }; 
+    }
 };
