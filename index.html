@@ -1,1 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>High-Alpha Portfolio Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #0f172a; color: #f8fafc; }
+        .glass-panel { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid #334155; }
+        .loader { border-top-color: #3b82f6; -webkit-animation: spinner 1.5s linear infinite; animation: spinner 1.5s linear infinite; }
+        @keyframes spinner { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="p-6 font-sans antialiased">
 
+    <div class="max-w-6xl mx-auto space-y-6">
+        <header class="pb-4 border-b border-slate-700">
+            <h1 class="text-3xl font-bold text-blue-400">High-Alpha Portfolio</h1>
+            <p class="text-sm text-slate-400">Secure Serverless Tracking & Gemini AI Insights</p>
+        </header>
+
+        <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" id="stock-grid">
+            </section>
+
+        <section class="glass-panel p-6 rounded-xl shadow-lg mt-8">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-semibold text-emerald-400 flex items-center gap-2">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    Gemini Technical Insights
+                </h2>
+                <button onclick="fetchInsights()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                    Refresh Insights
+                </button>
+            </div>
+            <div id="insight-content" class="text-slate-300 text-sm leading-relaxed min-h-[100px]">
+                Click 'Refresh Insights' to ping the secure Netlify backend for current market analysis.
+            </div>
+        </section>
+    </div>
+
+    <script>
+        const portfolio = [
+            { ticker: 'SE', name: 'Sea Limited', target: '+20%', stop: '-12%' },
+            { ticker: '5E2.SI', name: 'Seatrium', target: '$2.83', stop: '$2.08' },
+            { ticker: '558.SI', name: 'UMS Holdings', target: '$2.46', stop: '$1.80' },
+            { ticker: 'F03.SI', name: 'Food Empire', target: '+20%', stop: '-10%' }
+        ];
+
+        function renderUI() {
+            const grid = document.getElementById('stock-grid');
+            grid.innerHTML = portfolio.map(stock => `
+                <div class="glass-panel p-5 rounded-xl shadow-lg">
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <h3 class="text-lg font-bold">${stock.ticker}</h3>
+                            <p class="text-xs text-slate-400">${stock.name}</p>
+                        </div>
+                        <span class="px-2 py-1 bg-slate-800 rounded text-xs font-mono text-blue-300" id="price-${stock.ticker}">Loading...</span>
+                    </div>
+                    <div class="mt-4 flex justify-between text-xs border-t border-slate-700 pt-3">
+                        <span class="text-emerald-400">Target: ${stock.target}</span>
+                        <span class="text-rose-400">Stop: ${stock.stop}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function fetchPrices() {
+            try {
+                // Calling our secure Netlify function instead of an external API directly
+                const response = await fetch('/.netlify/functions/getStocks');
+                const data = await response.json();
+                
+                portfolio.forEach(stock => {
+                    const priceElement = document.getElementById(`price-${stock.ticker}`);
+                    if (data[stock.ticker]) {
+                        priceElement.innerText = `$${data[stock.ticker]}`;
+                    } else {
+                        priceElement.innerText = 'N/A';
+                    }
+                });
+            } catch (error) {
+                console.error("Failed to fetch prices", error);
+            }
+        }
+
+        async function fetchInsights() {
+            const outputBox = document.getElementById('insight-content');
+            outputBox.innerHTML = '<div class="loader ease-linear rounded-full border-2 border-t-2 border-slate-200 h-6 w-6 inline-block align-middle"></div> <span class="ml-3 align-middle">Analyzing market data securely...</span>';
+
+            try {
+                // Calling our secure Netlify function
+                const response = await fetch('/.netlify/functions/getInsights');
+                const data = await response.json();
+                
+                if (data.error) throw new Error(data.error);
+                outputBox.innerHTML = data.insight.replace(/\n/g, '<br>');
+            } catch (error) {
+                outputBox.innerHTML = `<span class='text-rose-400'>Error: ${error.message}</span>`;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            renderUI();
+            fetchPrices(); 
+        });
+    </script>
+</body>
+</html>
