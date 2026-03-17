@@ -7,10 +7,12 @@ exports.handler = async function(event, context) {
     const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
     const tickers = JSON.parse(event.body).tickers || [];
     
-    // ULTRA CONCISE PROMPT
-    const prompt = `Act as a veteran Singaporean institutional investor. Analyze for 6-month, 20% gain: ${tickers.join(', ')}. 
-    FORMAT: [TICKER]: [SIGNAL] - [1 SHORT REASON]. 
-    USE: [KEEP], [SELL], or [WATCH]. No intro/outro.`;
+    const prompt = `You are a veteran Singaporean institutional investor wirh 30 years of experience in investment, with a proven record in earning millions from stocks investments. Analyze this watchlist for 6-month, 20% upside: ${tickers.join(', ')}. 
+    
+    For each stock, provide:
+    TICKER: [SIGNAL] - Analysis (2 meaningful sentences). Target: [Price] | Stop: [Price]
+    
+    Use [KEEP], [SELL], or [WATCH]. Focus on technical momentum. No intro.`;
 
     try {
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
@@ -18,6 +20,18 @@ exports.handler = async function(event, context) {
             body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
         });
         const data = await response.json();
-        return { statusCode: 200, body: JSON.stringify({ insight: data.candidates[0].content.parts[0].text }) };
+        const aiResponse = data.candidates[0].content.parts[0].text;
+
+        const insightMap = {};
+        const lines = aiResponse.split('\n');
+        lines.forEach(line => {
+            const match = line.match(/^([A-Z0-9.]+):/);
+            if (match) {
+                const ticker = match[1];
+                insightMap[ticker] = line.replace(`${ticker}:`, '').trim();
+            }
+        });
+
+        return { statusCode: 200, body: JSON.stringify({ insights: insightMap }) };
     } catch (error) { return { statusCode: 500, body: JSON.stringify({ error: error.message }) }; }
 };
