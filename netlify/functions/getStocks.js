@@ -13,10 +13,32 @@ exports.handler = async function(event, context) {
     const livePrices = {};
 
     try {
-        const quotes = await Promise.all(symbols.map(symbol => yahooFinance.quote(symbol).catch(() => null)));
+        // Fetch each stock individually so one bad ticker doesn't crash the whole batch
+        const quotes = await Promise.all(symbols.map(async (symbol) => {
+            try {
+                return await yahooFinance.quote(symbol);
+            } catch (err) {
+                console.error(`❌ Error fetching ${symbol}:`, err.message);
+                return null; 
+            }
+        }));
+
         quotes.forEach((quote, index) => {
-            if (quote && quote.regularMarketPrice) livePrices[symbols[index]] = quote.regularMarketPrice.toFixed(2);
+            if (quote && quote.regularMarketPrice) {
+                livePrices[symbols[index]] = quote.regularMarketPrice.toFixed(2);
+            }
         });
+
+        // If the object is entirely empty, Yahoo blocked the Netlify server
+        if (Object.keys(livePrices).length === 0) {
+            console.error("❌ All tickers failed. Yahoo Finance may be rate-limiting this IP.");
+            return { statusCode: 500, body: JSON.stringify({ error: "All data requests blocked." }) };
+        }
+
         return { statusCode: 200, body: JSON.stringify(livePrices) };
-    } catch (error) { return { statusCode: 500, body: JSON.stringify({ error: "Data fetch failed." }) }; }
+        
+    } catch (error) { 
+        console.error("❌ Fatal Server Error in getStocks:", error.message);
+        return { statusCode: 500, body: JSON.stringify({ error: `Data fetch failed: ${error.message}` }) }; 
+    }
 };
