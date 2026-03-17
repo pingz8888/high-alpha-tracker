@@ -1,6 +1,11 @@
 exports.handler = async function(event, context) {
     if (event.httpMethod !== 'POST') return { statusCode: 405, body: 'Method Not Allowed' };
     
+    const APP_PASSWORD = process.env.APP_PASSWORD;
+    if (!event.headers['x-app-password'] || event.headers['x-app-password'] !== APP_PASSWORD) {
+        return { statusCode: 401, body: JSON.stringify({ error: "Unauthorized" }) };
+    }
+    
     const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
     const tickers = JSON.parse(event.body).tickers || [];
     if (tickers.length === 0) return { statusCode: 200, body: JSON.stringify({ insight: "Watchlist empty." }) };
