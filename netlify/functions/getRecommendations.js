@@ -12,20 +12,19 @@ exports.handler = async function(event, context) {
     const prompt = `Act as a veteran Singaporean hedge fund manager. Mandate: 6-month swing trades, 20% capital appreciation. Recommend TWO new stocks (US or SGX listed) showing high-probability technical setups. Format: Ticker, Catalyst, Entry Strategy, Stop-Loss.`;
 
     try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+        // Updated to the current, supported model: gemini-2.5-flash
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
         });
         
         const data = await response.json();
         
-        // Check if Google sent back an error object
         if (!response.ok) {
             console.error("Google API Error:", data);
             return { statusCode: 500, body: JSON.stringify({ error: `Google API Error: ${data.error?.message || response.statusText}` }) };
         }
 
-        // Check if Gemini blocked the prompt due to safety filters
         if (!data.candidates || data.candidates.length === 0) {
             console.error("Gemini blocked response:", data);
             return { statusCode: 500, body: JSON.stringify({ error: "Gemini returned an empty response. It may have triggered a safety filter." }) };
