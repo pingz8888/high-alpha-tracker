@@ -6,226 +6,166 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#000000">
-    <title>Alpha Tracker</title>
-    
-    <link rel="manifest" href="/manifest.json">
-    <link rel="apple-touch-icon" href="https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=192&h=192&fit=crop">
+    <title>Alpha v3</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    
     <style>
-        body { 
-            background-color: #000000; color: #f8fafc; 
-            -webkit-tap-highlight-color: transparent; 
-            padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom);
-        }
-        .ios-glass { 
-            background: rgba(30, 41, 59, 0.4); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); 
-            border: 1px solid rgba(255, 255, 255, 0.08); 
-            transition: all 0.5s ease;
-        }
-        
-        /* PRICE ALERTS */
-        .alert-target { border-color: rgba(16, 185, 129, 0.8) !important; box-shadow: 0 0 20px rgba(16, 185, 129, 0.3); }
-        .alert-stop { border-color: rgba(244, 63, 94, 0.8) !important; box-shadow: 0 0 20px rgba(244, 63, 94, 0.3); }
-        
-        ::-webkit-scrollbar { display: none; }
-        #splash-screen { position: fixed; inset: 0; background-color: #000000; z-index: 50; display: flex; justify-content: center; align-items: center; transition: opacity 0.5s; }
-        #auth-screen { position: fixed; inset: 0; background-color: #000000; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
+        body { background-color: #000; color: #f8fafc; -webkit-tap-highlight-color: transparent; padding-top: env(safe-area-inset-top); }
+        .ios-glass { background: rgba(30, 41, 59, 0.4); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.08); transition: all 0.3s ease; }
+        .alert-target { border-color: rgba(16, 185, 129, 0.8) !important; box-shadow: 0 0 15px rgba(16, 185, 129, 0.1); }
+        .alert-stop { border-color: rgba(244, 63, 94, 0.8) !important; box-shadow: 0 0 15px rgba(244, 63, 94, 0.1); }
+        #auth { position: fixed; inset: 0; background: #000; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
     </style>
 </head>
-<body class="font-sans antialiased min-h-screen flex flex-col pb-6 px-4 pt-6">
+<body class="font-sans antialiased min-h-screen flex flex-col pb-6 px-4 pt-4">
 
-    <div id="auth-screen">
+    <div id="auth">
         <h2 class="text-xl font-black text-white mb-6 tracking-widest uppercase italic">Alpha Terminal</h2>
-        <input type="password" id="masterKeyInput" placeholder="Master Key" class="w-full max-w-xs bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-center text-white focus:outline-none focus:border-blue-600 mb-4">
-        <button onclick="unlockApp()" class="w-full max-w-xs bg-blue-600 text-white px-5 py-3 rounded-xl font-black uppercase text-xs tracking-widest active:scale-95 transition-all">Connect</button>
-    </div>
-
-    <div id="splash-screen">
-        <div class="text-blue-500 text-[10px] font-black tracking-[0.3em] uppercase animate-pulse italic">Syncing Alpha v3...</div>
+        <input type="password" id="pin" placeholder="Master Key" class="w-full max-w-xs bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-center text-white focus:outline-none mb-4">
+        <button onclick="unlock()" class="w-full max-w-xs bg-blue-600 text-white px-5 py-3 rounded-xl font-black uppercase text-xs tracking-widest">Connect</button>
     </div>
 
     <header class="mb-4">
-        <div class="flex justify-between items-end mb-1">
+        <div class="flex justify-between items-end">
             <h1 class="text-2xl font-black tracking-tighter text-white uppercase italic">Alpha v3</h1>
-            <div id="last-sync" class="text-[9px] font-mono text-slate-600 bg-white/5 px-2 py-1 rounded uppercase tracking-tighter border border-white/5">Waiting...</div>
+            <div id="sync-time" class="text-[9px] font-mono text-slate-600 bg-white/5 px-2 py-1 rounded border border-white/5 uppercase">Ready</div>
         </div>
         <div class="flex gap-2 mt-4">
-            <input type="text" id="newTicker" placeholder="TICKER" class="w-full bg-slate-900/50 border border-slate-800 rounded-xl px-4 py-3 text-xs font-bold text-white uppercase focus:outline-none">
-            <button onclick="addStock()" class="bg-blue-600 text-white px-5 py-3 rounded-xl font-black text-[10px] uppercase active:scale-95">Add</button>
+            <input type="text" id="newT" placeholder="TICKER" class="w-full bg-slate-900/50 border border-slate-800 rounded-xl px-4 py-3 text-xs font-bold text-white uppercase focus:outline-none">
+            <button onclick="add()" class="bg-blue-600 text-white px-5 py-3 rounded-xl font-black text-[10px] uppercase">Add</button>
         </div>
     </header>
 
-    <section class="flex-1 overflow-y-auto space-y-3 pb-4" id="stock-grid"></section>
+    <section class="flex-1 overflow-y-auto space-y-3 pb-4" id="grid"></section>
 
-    <div class="space-y-3 mt-4">
-        <div id="ai-recommendations" class="ios-glass p-5 rounded-2xl text-xs font-mono leading-relaxed hidden border-l-4 border-emerald-500 text-slate-100 shadow-2xl"></div>
-        <button onclick="fetchRecommendations()" class="ios-glass active:bg-slate-800 w-full py-4 rounded-2xl flex flex-col items-center justify-center">
+    <div class="mt-4">
+        <div id="rec-box" class="ios-glass p-5 rounded-2xl text-[11px] font-mono leading-relaxed hidden border-l-4 border-emerald-500 text-slate-100 mb-3"></div>
+        <button id="hunt-btn" onclick="hunt()" class="ios-glass w-full py-4 rounded-2xl flex flex-col items-center justify-center">
             <span class="text-[9px] font-black text-emerald-400 uppercase tracking-widest">Global Alpha Scan</span>
         </button>
     </div>
 
     <script>
-        let watchlist = JSON.parse(localStorage.getItem('alphaWatchlist')) || ['SE', 'AAPL', 'D05.SI'];
-        let savedKey = localStorage.getItem('appMasterKey');
-        let priceLevels = JSON.parse(localStorage.getItem('alphaLevels')) || {};
+        let watchlist = JSON.parse(localStorage.getItem('alphaList')) || ['SE', '5E2.SI', 'D05.SI'];
+        let key = localStorage.getItem('alphaKey');
+        let cache = JSON.parse(localStorage.getItem('alphaCache')) || {};
 
-        function saveWatchlist() { localStorage.setItem('alphaWatchlist', JSON.stringify(watchlist)); }
-        function saveLevels() { localStorage.setItem('alphaLevels', JSON.stringify(priceLevels)); }
+        function save() { 
+            localStorage.setItem('alphaList', JSON.stringify(watchlist)); 
+            localStorage.setItem('alphaCache', JSON.stringify(cache));
+        }
 
         document.addEventListener('DOMContentLoaded', () => {
-            renderUI();
-            if (savedKey) {
-                document.getElementById('auth-screen').style.display = 'none';
-                fetchAllData();
-            } else {
-                document.getElementById('splash-screen').style.display = 'none';
-            }
+            render();
+            if (key) { document.getElementById('auth').style.display = 'none'; syncPrices(); }
         });
 
-        function unlockApp() {
-            const pin = document.getElementById('masterKeyInput').value;
-            if (pin) {
-                savedKey = pin;
-                localStorage.setItem('appMasterKey', savedKey);
-                document.getElementById('auth-screen').style.display = 'none';
-                document.getElementById('splash-screen').style.display = 'flex';
-                fetchAllData();
-            }
+        function unlock() {
+            const p = document.getElementById('pin').value;
+            if (p) { key = p; localStorage.setItem('alphaKey', key); document.getElementById('auth').style.display = 'none'; syncPrices(); }
         }
 
-        function handleAuthFailure() {
-            localStorage.removeItem('appMasterKey');
-            location.reload();
+        function add() {
+            const t = document.getElementById('newT').value.trim().toUpperCase();
+            if (t && !watchlist.includes(t)) { watchlist.push(t); save(); render(); syncPrices(); }
+            document.getElementById('newT').value = '';
         }
 
-        function addStock() {
-            const input = document.getElementById('newTicker');
-            const ticker = input.value.trim().toUpperCase();
-            if (ticker && !watchlist.includes(ticker)) {
-                watchlist.push(ticker);
-                saveWatchlist();
-                input.value = '';
-                renderUI();
-                fetchAllData();
-            }
-        }
+        function remove(t) { watchlist = watchlist.filter(x => x !== t); delete cache[t]; save(); render(); }
 
-        function removeStock(ticker) {
-            watchlist = watchlist.filter(t => t !== ticker);
-            delete priceLevels[ticker];
-            saveWatchlist(); saveLevels(); renderUI();
-        }
-
-        function renderUI() {
-            const grid = document.getElementById('stock-grid');
-            grid.innerHTML = watchlist.map(ticker => `
+        function render() {
+            document.getElementById('grid').innerHTML = watchlist.map(t => `
                 <div class="flex flex-col gap-1">
-                    <div id="card-${ticker}" class="ios-glass p-4 rounded-xl flex justify-between items-center relative z-10">
+                    <div id="card-${t}" class="ios-glass p-4 rounded-xl flex justify-between items-center" onclick="toggleInsight('${t}')">
                         <div class="flex flex-col">
-                            <h3 class="text-lg font-black text-white tracking-tighter uppercase italic">${ticker}</h3>
-                            <span id="name-${ticker}" class="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-[-2px]">Syncing...</span>
+                            <h3 class="text-lg font-black text-white italic uppercase tracking-tighter">${t}</h3>
+                            <span id="name-${t}" class="text-[9px] font-bold text-slate-500 uppercase mt-[-2px]">${cache[t]?.name || 'Offline'}</span>
                         </div>
                         <div class="flex items-center gap-4">
-                            <span class="text-md font-mono font-bold text-emerald-400" id="price-${ticker}">--</span>
-                            <button onclick="removeStock('${ticker}')" class="text-slate-800 active:text-rose-500"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" stroke-width="3" stroke-linecap="round"/></svg></button>
+                            <span class="text-md font-mono font-bold text-emerald-400" id="price-${t}">${cache[t]?.price ? '$'+cache[t].price : '--'}</span>
+                            <button onclick="event.stopPropagation(); remove('${t}')" class="text-slate-800"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" stroke-width="3" stroke-linecap="round"/></svg></button>
                         </div>
                     </div>
-                    <div id="insight-${ticker}" class="mx-2 p-3 bg-white/5 border border-white/5 rounded-b-xl text-[11px] leading-snug text-slate-300 hidden -mt-2 pt-4 transition-all italic font-medium">
-                        <span class="animate-pulse text-blue-500 font-bold uppercase text-[9px]">Analyzing Setup...</span>
+                    <div id="ins-${t}" class="mx-2 p-3 bg-white/5 rounded-b-xl text-[11px] text-slate-300 hidden -mt-2 pt-4 transition-all">
+                        <div id="text-${t}">${cache[t]?.insight || 'Tap Refresh to analyze...'}</div>
+                        <div class="mt-2 flex justify-between items-center border-t border-white/5 pt-2">
+                            <span class="text-[8px] text-slate-600 font-mono uppercase">${cache[t]?.ts ? 'Updated: ' + new Date(cache[t].ts).toLocaleTimeString() : ''}</span>
+                            <button onclick="event.stopPropagation(); getInsight('${t}')" class="text-blue-500 font-black text-[9px] uppercase">Refresh AI</button>
+                        </div>
                     </div>
                 </div>
             `).join('');
+            watchlist.forEach(t => updateAlertVisuals(t));
         }
 
-        async function fetchAllData() {
-            if (watchlist.length === 0) return removeSplashScreen();
-            await fetchPrices();
-            await fetchWatchlistInsights();
-            removeSplashScreen();
-        }
-
-        async function fetchPrices() {
+        async function syncPrices() {
             try {
-                const response = await fetch(`/.netlify/functions/getStocks?symbols=${watchlist.join(',')}`, {
-                    headers: { 'x-app-password': savedKey }
-                });
-                if (response.status === 401) return handleAuthFailure();
-                const data = await response.json();
-                
-                watchlist.forEach(ticker => {
-                    const priceEl = document.getElementById(`price-${ticker}`);
-                    const nameEl = document.getElementById(`name-${ticker}`);
-                    const cardEl = document.getElementById(`card-${ticker}`);
-                    
-                    if (data[ticker]) {
-                        const cur = parseFloat(data[ticker].price);
-                        priceEl.innerText = `$${cur.toFixed(2)}`;
-                        nameEl.innerText = data[ticker].name || ticker;
+                const res = await fetch(`/api/getStocks?symbols=${watchlist.join(',')}`, { headers: { 'x-app-key': key } });
+                const data = await res.json();
+                watchlist.forEach(t => {
+                    if (data[t]) {
+                        const cur = parseFloat(data[t].price);
+                        if (!cache[t]) cache[t] = {};
                         
-                        if (priceLevels[ticker]) {
-                            const { target, stop } = priceLevels[ticker];
-                            cardEl.classList.remove('alert-target', 'alert-stop');
-                            if (cur >= target) cardEl.classList.add('alert-target');
-                            else if (cur <= stop) cardEl.classList.add('alert-stop');
-                        }
+                        // SENTRY: Trigger Alert if stop hit
+                        if (cache[t].stop && cur <= cache[t].stop) triggerAlert(t, cur, cache[t].stop);
+
+                        cache[t].price = data[t].price;
+                        cache[t].name = data[t].name;
+                        document.getElementById(`price-${t}`).innerText = `$${data[t].price}`;
+                        document.getElementById(`name-${t}`).innerText = data[t].name;
+                        updateAlertVisuals(t);
                     }
                 });
-                const now = new Date();
-                document.getElementById('last-sync').innerText = `Sync: ${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`;
-            } catch (error) { console.error("Price fetch failed"); }
+                document.getElementById('sync-time').innerText = `Sync: ${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
+                save();
+            } catch (e) { console.error("Sync Failed"); }
         }
 
-        async function fetchWatchlistInsights() {
-            watchlist.forEach(t => document.getElementById(`insight-${t}`).classList.remove('hidden'));
+        async function getInsight(t) {
+            const box = document.getElementById(`text-${t}`);
+            box.innerHTML = '<span class="animate-pulse text-blue-500 font-black uppercase text-[9px]">Analyzing Alpha...</span>';
             try {
-                const response = await fetch('/.netlify/functions/getInsights', { 
-                    method: 'POST', 
-                    headers: { 'Content-Type': 'application/json', 'x-app-password': savedKey },
-                    body: JSON.stringify({ tickers: watchlist }) 
+                const res = await fetch('/.netlify/functions/getInsights', { 
+                    method: 'POST', headers: { 'Content-Type': 'application/json', 'x-app-key': key }, body: JSON.stringify({ ticker: t }) 
                 });
-                const data = await response.json(); 
+                const data = await res.json();
+                const target = data.insight.match(/Target: (\d+\.?\d*)/)?.[1];
+                const stop = data.insight.match(/Stop: (\d+\.?\d*)/)?.[1];
                 
-                if (data.insights) {
-                    watchlist.forEach(ticker => {
-                        const insightEl = document.getElementById(`insight-${ticker}`);
-                        if (data.insights[ticker]) {
-                            insightEl.innerHTML = data.insights[ticker].replace(/\[KEEP\]/g, '<span class="text-emerald-400 font-bold">KEEP</span>')
-                                                                        .replace(/\[SELL\]/g, '<span class="text-rose-400 font-bold">SELL</span>')
-                                                                        .replace(/\[WATCH\]/g, '<span class="text-blue-400 font-bold">WATCH</span>');
-                            
-                            const targetMatch = data.insights[ticker].match(/Target: (\d+\.?\d*)/);
-                            const stopMatch = data.insights[ticker].match(/Stop: (\d+\.?\d*)/);
-                            if (targetMatch || stopMatch) {
-                                priceLevels[ticker] = {
-                                    target: targetMatch ? parseFloat(targetMatch[1]) : 999999,
-                                    stop: stopMatch ? parseFloat(stopMatch[1]) : 0
-                                };
-                                saveLevels();
-                            }
-                        }
-                    });
-                    fetchPrices();
-                }
-            } catch (error) { console.error("AI Insight failed"); }
+                cache[t] = { ...cache[t], insight: data.insight, ts: Date.now(), target: parseFloat(target), stop: parseFloat(stop) };
+                save(); render();
+                document.getElementById(`ins-${t}`).classList.remove('hidden');
+            } catch (e) { box.innerText = "Timeout. Try again."; }
         }
 
-        function removeSplashScreen() {
-            const splash = document.getElementById('splash-screen');
-            if (splash) setTimeout(() => { splash.style.opacity = '0'; setTimeout(() => { splash.style.display = 'none'; }, 500); }, 500);
+        async function triggerAlert(ticker, price, stop) {
+            const alertKey = `alert_${ticker}`;
+            if (cache[alertKey] && (Date.now() - cache[alertKey] < 3600000)) return;
+            fetch('/.netlify/functions/sendAlert', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ticker, price, stop, key })
+            });
+            cache[alertKey] = Date.now(); save();
         }
 
-        async function fetchRecommendations() {
-            const box = document.getElementById('ai-recommendations');
-            box.classList.remove('hidden');
-            box.innerHTML = '<div class="py-4 text-center animate-pulse text-[10px] font-black text-emerald-500 uppercase tracking-widest">Scanning Global Alpha...</div>';
+        function toggleInsight(t) { document.getElementById(`ins-${t}`).classList.toggle('hidden'); }
+        function updateAlertVisuals(t) {
+            const card = document.getElementById(`card-${t}`);
+            const item = cache[t];
+            if (!card || !item || !item.target) return;
+            card.classList.remove('alert-target', 'alert-stop');
+            if (parseFloat(item.price) >= item.target) card.classList.add('alert-target');
+            else if (parseFloat(item.price) <= item.stop) card.classList.add('alert-stop');
+        }
+
+        async function hunt() {
+            const box = document.getElementById('rec-box');
+            box.classList.remove('hidden'); box.innerHTML = '<div class="animate-pulse">Global Scan...</div>';
             try {
-                const response = await fetch('/.netlify/functions/getRecommendations', {
-                    headers: { 'x-app-password': savedKey }
-                });
-                const data = await response.json(); 
+                const res = await fetch('/.netlify/functions/getRecommendations', { headers: { 'x-app-key': key } });
+                const data = await res.json();
                 box.innerHTML = data.recommendations.replace(/\n/g, '<br>');
-            } catch (error) { box.innerHTML = `Error: ${error.message}`; }
+            } catch (e) { box.innerHTML = "Timeout."; }
         }
     </script>
 </body>
