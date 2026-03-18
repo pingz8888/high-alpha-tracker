@@ -1,15 +1,19 @@
 [build]
-  publish = "."
+  publish = "."                # Where your index.html lives
   functions = "netlify/functions"
 
 [functions]
-  node_bundle = true
+  # Use the fast esbuild bundler (Corrected from node_bundle)
+  node_bundler = "esbuild"
+  
+  # Ensure nodemailer isn't mangled during bundling
+  external_node_modules = ["nodemailer"]
 
-# Reroute price sync to the EDGE (Zero Runtime Minutes)
+# Reroute price sync to the EDGE (Saves your 100-hour budget)
 [[edge_functions]]
   path = "/api/getStocks"
   function = "getStocks"
 
-# Standard Serverless Functions
+# Scheduled morning brief (Runs once at 8 AM SGT)
 [functions.dailyCron]
   schedule = "0 0 * * *"
