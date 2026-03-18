@@ -10,7 +10,7 @@ exports.handler = async function(event, context) {
     
     Format:
     ★ [Ticker] | [Company]
-    Thesis: [2-sentence technical setup].
+    Thesis: [1-sentence technical setup].
     Levels: Entry @ [Price] | Stop @ [Price] | Target @ [Price].`;
 
     try {

@@ -10,7 +10,7 @@ exports.handler = async function(event, context) {
     const prompt = `You are a veteran Singaporean institutional investor wirh 30 years of experience in investment, with a proven record in earning millions from stocks investments. Analyze this watchlist for 6-month, 20% upside: ${tickers.join(', ')}. 
     
     For each stock, provide:
-    TICKER: [SIGNAL] - Analysis (2 meaningful sentences). Target: [Price] | Stop: [Price]
+    TICKER: [SIGNAL] - Analysis (1 meaningful sentences). Target: [Price] | Stop: [Price]
     
     Use [KEEP], [SELL], or [WATCH]. Focus on technical momentum. No intro.`;
 
